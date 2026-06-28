@@ -1,0 +1,2306 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سامانه مدیریت برنامه‌های کاری اتاق عمل و هوشبری</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&display=swap');
+        
+        body { 
+            font-family: 'Vazirmatn', sans-serif; 
+            background: radial-gradient(circle at top left, #f8fafc, #f1f5f9);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        table { border-collapse: collapse; width: max-content; margin: 0 auto; }
+        th, td { border: 1px solid #e2e8f0; text-align: center; padding: 0; height: 44px; vertical-align: middle; transition: all 0.15s ease; position: relative; }
+        th { background: #f8fafc; color: #475569; font-size: 12px; font-weight: 700; }
+
+        .name-column { min-width: 155px; width: 155px; max-width: 155px; background: #f1f5f9; font-weight: 700; }
+        .type-column { min-width: 95px; width: 95px; max-width: 95px; }
+        .role-column { min-width: 135px; width: 135px; max-width: 135px; }
+        .day-column { min-width: 44px; width: 44px; max-width: 44px; }
+        .stat-column { min-width: 70px; width: 70px; max-width: 70px; background: #f1f5f9; font-size: 12px; color: #1e293b; }
+
+        input, select { width: 100%; height: 100%; border: none; background: transparent; text-align: center; font-family: 'Vazirmatn', sans-serif; font-size: 13px; color: #334155; box-sizing: border-box; font-weight: 500; }
+        input:focus, select:focus { outline: none; background: rgba(255, 255, 255, 0.9); }
+
+        tr.empty-name .role-column select { visibility: hidden; }
+        tr.empty-name .type-column select { opacity: 0.4; }
+
+        .day-number { font-weight: 800; font-size: 13px; line-height: 1.2; color: #1e293b; }
+        .day-name { font-size: 9px; color: #94a3b8; line-height: 1.2; font-weight: 500; }
+        
+        .holiday { background: #fff1f2 !important; color: #e11d48 !important; }
+        .holiday .day-name { color: #f43f5e !important; }
+        .holiday .day-number { color: #be123c !important; }
+
+        .multi-select-wrapper { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .multi-select-wrapper .selected-display { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 2px; cursor: pointer; font-size: 12px; padding: 2px; box-sizing: border-box; }
+        .multi-select-wrapper .selected-display:hover { background: #f1f5f9; }
+        
+        .multi-select-wrapper .dropdown-list { display: none; position: absolute; top: 100%; right: 0; left: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); z-index: 1000; max-height: 250px; overflow-y: auto; padding: 6px; width: 130px; }
+        .multi-select-wrapper .dropdown-list.show { display: block; }
+        .multi-select-wrapper .dropdown-list label { display: flex; align-items: center; padding: 4px 5px; cursor: pointer; font-size: 12px; text-align: right; gap: 6px; border-radius: 6px; transition: background 0.1s; }
+        .multi-select-wrapper .dropdown-list label:hover { background: #f1f5f9; }
+        .multi-select-wrapper .dropdown-list label input[type="checkbox"] { width: 14px; height: 14px; margin: 0; cursor: pointer; accent-color: #4f46e5; }
+        
+        .selected-tag { background: #4f46e5; color: #ffffff; padding: 1px 4px; border-radius: 4px; font-size: 10px; white-space: nowrap; font-weight: 700; box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2); }
+        .circle-s { display: inline-block; width: 16px; height: 16px; line-height: 16px; border-radius: 50%; background: #06b6d4; color: #fff; font-size: 10px; font-weight: 900; text-align: center; }
+        
+        .requested-off-tag { background: #f59e0b !important; color: #ffffff !important; padding: 1px 4px; border-radius: 4px; font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 2px; }
+        .note-tooltip { position: absolute; bottom: 105%; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 6px 10px; border-radius: 8px; font-size: 10px; width: 130px; z-index: 2000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.15); line-height: 1.4; pointer-events: none; }
+        td:hover .note-tooltip { display: block; }
+
+        .conflict-message { color: #ffffff; font-size: 9px; font-weight:700; display: none; padding: 3px 6px; background: #ef4444; border-radius: 6px; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); z-index: 1100; width: 75px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+
+        .signature { margin-top: 25px; display: flex; justify-content: space-between; font-size: 12px; padding: 0 15px; font-weight: 600; color: #475569; }
+        .print-header { display: none; text-align: center; margin-bottom: 12px; font-weight: bold; }
+        
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .action-btn-primary { background-color: #4f46e5; color: white; }
+        .action-btn-primary:hover { background-color: #4338ca; transform: translateY(-1px); }
+        .action-btn-danger { background-color: #ef4444; color: white; }
+        .action-btn-danger:hover { background-color: #dc2626; transform: translateY(-1px); }
+        .action-btn-success { background-color: #22c55e; color: white; }
+        .action-btn-success:hover { background-color: #16a34a; transform: translateY(-1px); }
+        .action-btn-slate { background-color: #64748b; color: white; }
+        .action-btn-slate:hover { background-color: #475569; transform: translateY(-1px); }
+        .action-btn-cyan { background-color: #06b6d4; color: white; }
+        .action-btn-cyan:hover { background-color: #0891b2; transform: translateY(-1px); }
+        .action-btn-amber { background-color: #f59e0b; color: white; }
+        .action-btn-amber:hover { background-color: #d97706; transform: translateY(-1px); }
+        .action-btn-rose { background-color: #f43f5e; color: white; }
+        .action-btn-rose:hover { background-color: #e11d48; transform: translateY(-1px); }
+        .action-btn-violet { background-color: #8b5cf6; color: white; }
+        .action-btn-violet:hover { background-color: #7c3aed; transform: translateY(-1px); }
+    </style>
+
+    <style>
+        @media print {
+            @page { size: A4 landscape; margin: 4mm; }
+            body { background: white !important; -webkit-print-color-adjust: economy; print-color-adjust: economy; margin:0; padding:0; font-size: 9px; font-family: 'Vazirmatn', Tahoma, sans-serif; color: #000000 !important; }
+            .toolbar, .holiday-controls, #authBox, .admin-area, .admin-requests-box, #mainTitle, #publishControlBox, #staffInstructionBox, #userModal { display: none !important; }
+            .wrap { overflow: visible !important; padding: 0 !important; box-shadow: none; background: transparent; max-width: 100%; }
+            table { width: 100% !important; table-layout: fixed; font-size: 8px; border: 1px solid #000000 !important; }
+            th, td { padding: 0 !important; height: 21px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid #000000 !important; background: transparent !important; color: #000000 !important; }
+            tr.hide-in-print { display: none !important; }
+            .name-column { width: 85px !important; min-width: 85px !important; max-width: 85px !important; background: transparent !important; font-weight: bold !important; }
+            .type-column { width: 52px !important; min-width: 52px !important; max-width: 52px !important; }
+            .role-column { width: 85px !important; min-width: 85px !important; max-width: 85px !important; }
+            .day-column { width: auto !important; min-width: 17px !important; }
+            .stat-column { width: 42px !important; min-width: 42px !important; max-width: 42px !important; font-size: 8px !important; background: transparent !important; font-weight: bold !important; }
+            .name-column input, .type-column select, .role-column select, .stat-column input { font-size: 8px !important; color: #000000 !important; font-weight: bold !important; }
+            .multi-select-wrapper .selected-display { font-size: 8px !important; padding: 0 !important; gap: 0px; color: #000000 !important; }
+            .multi-select-wrapper .dropdown-list { display: none !important; }
+            .selected-tag { font-size: 8px !important; padding: 0 !important; margin: 0; background: transparent !important; color: #000000 !important; box-shadow: none !important; border: none !important; font-weight: bold !important; }
+            .requested-off-tag { display: none !important; }
+            .circle-s { width: auto !important; height: auto !important; line-height: normal !important; background: transparent !important; color: #000000 !important; border-radius: 0 !important; font-weight: bold !important; }
+            .holiday { background: transparent !important; border: 1px solid #000000 !important; }
+            .holiday .day-name, .holiday .day-number { color: #000000 !important; font-weight: bold !important; }
+            .print-header { display: block !important; text-align: center; }
+            .signature { display: flex !important; justify-content: space-between; font-size: 10px; margin-top: 10px; position: fixed; bottom: 4px; left: 4px; right: 4px; background: white; color: #000000 !important; }
+            input, select { border: none !important; background: transparent !important; -webkit-appearance: none; appearance: none; color: #000000 !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen p-3 md:p-6 flex flex-col justify-between gap-6">
+
+    <div class="w-full max-w-[1600px] mx-auto space-y-5">
+        
+        <h2 id="mainTitle" class="text-center text-slate-900 font-black text-xl md:text-2xl tracking-tight bg-clip-text bg-gradient-to-r from-slate-900 to-indigo-950">برنامه کاری پرسنل</h2>
+
+        <div class="toolbar glass-card border border-white/70 p-4 rounded-2xl shadow-xl shadow-slate-200/50 flex flex-col lg:flex-row gap-4 items-center justify-between">
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                <div class="flex items-center gap-1.5">
+                    <label class="text-xs font-bold text-slate-500 whitespace-nowrap">نوع برنامه:</label>
+                    <select id="scheduleType" onchange="changeMonth()" class="w-44 border border-indigo-200 bg-white text-indigo-600 h-9 rounded-xl px-2 font-bold text-xs focus:ring-4 focus:ring-indigo-100 transition-all outline-none appearance-none cursor-pointer">
+                        <option value="anesthesia">برنامه هوشبری</option>
+                        <option value="or">برنامه اتاق عمل</option>
+                        <option value="crisis_anesthesia">برنامه بحران هوشبری</option>
+                        <option value="crisis_or">برنامه بحران اتاق عمل</option>
+                        <option value="general_view">نمایش کلی</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-1">
+                    <label class="text-xs font-bold text-slate-500">سال:</label>
+                    <select id="year" onchange="changeMonth()" class="w-20 border border-slate-200 bg-white h-9 rounded-xl px-2 font-bold text-xs focus:ring-4 focus:ring-slate-100 transition-all outline-none cursor-pointer">
+                        <option>1405</option><option>1406</option><option>1407</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-1">
+                    <label class="text-xs font-bold text-slate-500">ماه:</label>
+                    <select id="month" onchange="changeMonth()" class="w-28 border border-slate-200 bg-white h-9 rounded-xl px-2 font-bold text-xs focus:ring-4 focus:ring-slate-100 transition-all outline-none cursor-pointer">
+                        <option value="1">فروردین</option><option value="2">اردیبهشت</option><option value="3">خرداد</option><option value="4">تیر</option><option value="5">مرداد</option><option value="6">شهریور</option><option value="7">مهر</option><option value="8">آبان</option><option value="9">آذر</option><option value="10">دی</option><option value="11">بهمن</option><option value="12">اسفند</option>
+                    </select>
+                </div>
+
+                <button onclick="window.print()" class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-200 transition-all flex items-center gap-1.5">
+                    <span>🖨️</span> چاپ
+                </button>
+                
+                <div class="flex items-center gap-1.5 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200/50">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="syncStatus" class="text-[11px] font-bold text-slate-600">در حال بررسی...</span>
+                </div>
+            </div>
+            
+            <div id="authBox" class="flex flex-wrap items-center gap-2 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/60 w-full lg:w-auto justify-end">
+                <div id="loginForm" class="flex items-center gap-2">
+                    <input type="email" id="loginEmail" placeholder="ایمیل" class="w-36 bg-white border border-slate-200 text-xs px-2.5 py-1.5 rounded-lg h-8 text-right">
+                    <input type="password" id="loginPassword" placeholder="رمز" class="w-28 bg-white border border-slate-200 text-xs px-2.5 py-1.5 rounded-lg h-8 text-right">
+                    <button type="button" onclick="handleLogin()" class="h-8 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all">ورود</button>
+                </div>
+                <div id="logoutForm" class="items-center justify-between gap-3 w-full lg:w-auto hidden">
+                    <span id="userBadge" class="text-xs font-bold px-2.5 py-1 rounded-lg"></span>
+                    <button onclick="handleLogout()" class="h-7 px-3 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-all">خروج</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="staffInstructionBox" class="bg-indigo-50 border border-indigo-200 p-3.5 rounded-2xl text-xs font-semibold text-indigo-950 flex items-center gap-2 shadow-sm">
+            <span>💡</span>
+            <span id="instructionText">برای ثبت درخواست <strong>«آف درخواستی»</strong> ابتدا وارد شوید.</span>
+        </div>
+
+        <div id="publishControlBox" class="bg-amber-50 border border-amber-300 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 hidden shadow-md">
+            <div class="text-xs font-bold text-amber-950 flex items-center gap-2">
+                <span>⚠️ برنامه ماه‌های آینده:</span>
+                <span id="publishStatusLabel" class="bg-rose-500 text-white px-2.5 py-1 rounded-lg">🔒 پیش‌نویس</span>
+            </div>
+            <button id="togglePublishBtn" onclick="togglePublishStatus()" class="h-8 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow">
+                👁️ انتشار
+            </button>
+        </div>
+
+        <div class="admin-area bg-amber-50/70 border border-amber-200/80 p-4 rounded-2xl shadow-lg shadow-amber-100/40 space-y-4 hidden" id="adminControls">
+            <div class="holiday-controls flex flex-wrap gap-3 items-center bg-white/80 p-3 rounded-xl border border-amber-200/50 justify-between">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <label class="font-bold text-xs text-slate-700">تعطیلات:</label>
+                    <input type="text" id="manualHolidays" placeholder="مثال: 1,2,3" class="w-32 border border-slate-200 bg-white rounded-lg px-2 text-center text-xs h-8">
+                    <button onclick="applyManualHolidays()" class="action-btn action-btn-primary">✨ اعمال</button>
+                    <button onclick="clearManualHolidays()" class="action-btn action-btn-danger">🗑️ پاک کردن</button>
+                </div>
+                
+                <div id="crisisActionGroup" class="flex gap-2 items-center hidden">
+                    <button onclick="autoFillCrisisSchedule()" class="action-btn action-btn-rose">⚡ چینش بحران</button>
+                    <button onclick="clearCrisisSchedule()" class="action-btn action-btn-slate">🗑️ پاک بحران</button>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                    <button onclick="openUserModal()" class="action-btn action-btn-violet">👥 مدیریت کاربران</button>
+                    <button onclick="exportData()" class="action-btn action-btn-cyan">📤 خروجی JSON</button>
+                    <button onclick="document.getElementById('fileInput').click()" class="action-btn action-btn-amber">📥 ورودی JSON</button>
+                </div>
+                <input type="file" id="fileInput" accept=".json" onchange="importData(event)" class="hidden">
+            </div>
+            
+            <div class="text-xs text-amber-800 font-medium flex items-center gap-1 bg-amber-100/50 p-2 rounded-lg">
+                <span>🔑</span>
+                <strong>کد تایید جابه‌جایی:</strong> 
+                <span id="todayCode" class="font-bold bg-white text-slate-900 px-2 py-0.5 border border-amber-200 rounded-md tracking-wider">---</span>
+            </div>
+        </div>
+
+        <div class="print-header">
+            <div id="printTitle" class="text-base font-bold mb-1"></div>
+            <div id="printSubtitle" class="text-xs text-slate-500">بخش هوشبری و اتاق عمل</div>
+        </div>
+
+        <div class="wrap overflow-auto bg-white border border-slate-200/80 p-4 rounded-2xl shadow-xl shadow-slate-200/60 max-w-full">
+            <div id="loading" class="loading text-center py-12 text-slate-400 font-bold text-sm flex flex-col items-center justify-center gap-2">
+                <span class="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+                <span id="loadingText">در حال بارگذاری...</span>
+            </div>
+            <table id="tbl" style="display:none"></table>
+        </div>
+
+        <div class="admin-requests-box bg-orange-50/60 border border-orange-200 p-5 rounded-2xl shadow-lg shadow-orange-50/50 space-y-4 hidden" id="adminRequestsBox">
+            <div class="border-r-4 border-orange-500 pr-3">
+                <h3 class="font-extrabold text-orange-900 text-sm">📋 درخواست‌های جابه‌جایی</h3>
+            </div>
+            <div class="overflow-hidden rounded-xl border border-orange-200/60 bg-white shadow-inner">
+                <table class="req-table w-full !layout-auto">
+                    <thead>
+                        <tr class="bg-orange-100/70 text-orange-950 text-xs font-bold border-b border-orange-200">
+                            <th class="p-3 text-right" style="width: 20%;">متقاضی</th>
+                            <th class="p-3 text-right" style="width: 55%;">شرح</th>
+                            <th class="p-3 text-center" style="width: 15%;">تاریخ</th>
+                            <th class="p-3 text-center" style="width: 10%;">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestsList" class="divide-y divide-slate-100 text-slate-700 text-xs">
+                        <tr>
+                            <td colspan="4" class="text-center py-6 text-slate-400 font-medium">در حال بارگذاری...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="signature">
+            <div>امضای مسئول اتاق عمل / هوشبری: ........................</div>
+            <div>امضای مترون بیمارستان: ........................</div>
+            <div>امضای ریاست بیمارستان: ........................</div>
+        </div>
+
+    </div>
+
+    <div id="userModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[5000] hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div class="p-4 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+                <div class="flex items-center gap-2 text-indigo-950">
+                    <span class="text-lg">👥</span>
+                    <h3 class="font-extrabold text-base">مدیریت و همگام‌سازی کاربران سیستم</h3>
+                </div>
+                <button onclick="closeUserModal()" class="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 flex items-center justify-center font-bold transition-all text-sm">✕</button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto space-y-6">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
+                    <h4 class="font-bold text-xs text-slate-700 mb-3">➕ ثبت کاربر پرسنلی جدید</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <input type="email" id="newUserEmail" placeholder="ایمیل کاربر" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-right h-9 outline-none focus:border-indigo-500">
+                        <input type="text" id="newUserPassword" placeholder="رمز عبور (حداقل ۴ کاراکتر)" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-right h-9 outline-none focus:border-indigo-500">
+                        <input type="text" id="newUserName" placeholder="نام و نام خانوادگی" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-right h-9 outline-none focus:border-indigo-500">
+                        <select id="newUserDepartment" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs h-9 outline-none focus:border-indigo-500">
+                            <option value="anesthesia">بخش هوشبری</option>
+                            <option value="or">بخش اتاق عمل</option>
+                        </select>
+                    </div>
+                    <div class="mt-4 flex gap-2">
+                        <button onclick="createUserFromForm()" class="action-btn action-btn-primary">✨ ایجاد کاربر جدید</button>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 items-center justify-between bg-indigo-50/40 p-3 rounded-xl border border-indigo-100/50">
+                    <span class="text-xs font-bold text-indigo-950">⚙️ ابزارهای همگام‌سازی سریع:</span>
+                    <div class="flex gap-2">
+                        <button onclick="loadUsersList()" class="action-btn action-btn-slate">🔄 بروزرسانی لیست</button>
+                        <button onclick="syncAllUsersToTable()" class="action-btn action-btn-success">📋 همگام‌سازی و نشاندن در جدول اصلی</button>
+                    </div>
+                </div>
+                
+                <div class="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                    <table class="w-full text-xs !layout-auto">
+                        <thead class="bg-slate-50 sticky top-0 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 text-right text-slate-700 font-bold" style="width:25%">نام و نام خانوادگی</th>
+                                <th class="p-3 text-right text-slate-700 font-bold" style="width:35%">ایمیل ثبت‌شده</th>
+                                <th class="p-3 text-right text-slate-700 font-bold" style="width:15%">بخش</th>
+                                <th class="p-3 text-center text-slate-700 font-bold" style="width:25%">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersList" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="4" class="text-center py-6 text-slate-400">در حال بارگذاری لیست کاربران...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const SUPABASE_URL = 'https://fihroqlrosdeboujezaj.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_gATLaXJn0o7vccjiOVWh9Q_DjdgrWGC'; 
+    const TABLE_NAME = 'schedules'; 
+    const USERS_TABLE = 'app_users';
+    const STORAGE_KEY = 'operation_room_schedule_data';
+    const SECRET_SALT = "OR_ROOM_KEY_1405"; 
+
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const employees = 20; 
+    const employment = ["رسمی", "شرکتی", "پیمانی", "قراردادی", "طرح"];
+    const roles = ["کارشناس اتاق عمل", "کارشناس هوشبری", "سرپرستار اتاق عمل"];
+    
+    let isAdmin = false;
+    let isStaff = false; 
+    let currentUserEmail = "";
+    let currentUserProfile = null;
+    let currentUserDepartment = "";
+
+    const baseHours = { "ص": 7, "ع": 7, "ش": 19, "D": 2, "E": 2, "N": 4, "S": 7, "م": 7, "آ": 7, "⭕ص": 7, "ص ع": 13, "ع ش": 25 };
+    const holidayBaseHours = { "ص": 10, "ع": 10, "ش": 19, "D": 2, "E": 2, "N": 4, "S": 7, "م": 7, "آ": 7, "⭕ص": 10, "ص ع": 19, "ع ش": 28 };
+    const blockingShifts = ["S", "م", "آ"];
+    const manualConflicts = { "D": ["ص", "ص ع", "⭕ص"], "ص": ["D", "ص ع"], "⭕ص": ["D", "ص"], "E": ["ع", "ص ع", "ع ش"], "ع": ["E", "ص ع", "ع ش"], "N": ["ش", "ع ش"], "ش": ["N", "ع ش"], "ص ع": ["D", "E", "ص", "ع"], "ع ش": ["E", "N", "ع", "ش"] };
+    const shiftOptions = [ { code: "", display: "---", hours: 0 }, { code: "ص", display: "ص", hours: 7 }, { code: "ع", display: "ع", hours: 7 }, { code: "ش", display: "ش", hours: 19 }, { code: "ص ع", display: "ص ع", hours: 13 }, { code: "ع ش", display: "ع ش", hours: 25 }, { code: "D", display: "D", hours: 2 }, { code: "E", display: "E", hours: 2 }, { code: "N", display: "N", hours: 4 }, { code: "S", display: "S", hours: 7 }, { code: "م", display: "م", hours: 7 }, { code: "آ", display: "آ", hours: 7 }, { code: "⭕ص", display: "⭕ص", hours: 7, isCircle: true } ];
+    const weekDays = ["ش", "ی", "د", "س", "چ", "پ", "ج"];
+
+    let allData = {};
+    let manualHolidayDays = [];
+    let allMultiSelects = []; 
+
+    // ============================================================
+    // ============ فقط برای همگام‌سازی نام‌ها با دیتابیس ============
+    // ============================================================
+    const DEFAULT_USERS = [
+        { full_name: 'میثم ایمانی', department: 'or' },
+        { full_name: 'شیما اینانلو', department: 'anesthesia' },
+        { full_name: 'زهرا یوسفی', department: 'anesthesia' },
+        { full_name: 'مهناز قربانی', department: 'anesthesia' },
+        { full_name: 'مرضیه پروربیع', department: 'anesthesia' }
+    ];
+
+    // ============================================================
+    // ============ توابع مدیریت مودال ============
+    // ============================================================
+    function openUserModal() {
+        document.getElementById('userModal').classList.remove('hidden');
+        loadUsersList();
+    }
+    function closeUserModal() {
+        document.getElementById('userModal').classList.add('hidden');
+    }
+
+    // ============================================================
+    // ============ توابع تاریخ شمسی ============
+    // ============================================================
+    function toPersianDate(date) {
+        const persianMonths = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+        const gregorianDate = new Date(date);
+        let year = gregorianDate.getFullYear();
+        let month = gregorianDate.getMonth() + 1;
+        let day = gregorianDate.getDate();
+        
+        let persianYear = year - 621;
+        let persianMonth = 10;
+        let persianDay = 11;
+        
+        const g_days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        let g_days = 0;
+        for (let i = 0; i < month - 1; i++) {
+            g_days += g_days_in_month[i];
+        }
+        g_days += day;
+        
+        const p_days = g_days - 79;
+        if (p_days <= 0) {
+            persianYear--;
+            persianMonth = 9;
+            persianDay = p_days + 30;
+        } else {
+            let p_month = 0;
+            let remaining = p_days;
+            for (let i = 0; i < 12; i++) {
+                if (remaining <= persianMonths[i]) {
+                    p_month = i + 1;
+                    persianDay = remaining;
+                    break;
+                }
+                remaining -= persianMonths[i];
+            }
+            persianMonth = p_month;
+        }
+        
+        return { year: persianYear, month: persianMonth, day: persianDay };
+    }
+
+    function isPastDate(year, month, day) {
+        const today = new Date();
+        const persianDate = toPersianDate(today);
+        
+        if (year < persianDate.year) return true;
+        if (year === persianDate.year && month < persianDate.month) return true;
+        if (year === persianDate.year && month === persianDate.month && day < persianDate.day) return true;
+        
+        return false;
+    }
+
+    function getMonthKey(year, month, type) { return year + '-' + month + '-' + type; }
+    function updateSyncStatus(text, isError = false) { const el = document.getElementById('syncStatus'); if (el) { el.innerText = text; el.parentElement.style.borderColor = isError ? '#fecdd3' : '#bbf7d0'; } }
+
+    function generateDailyCode() {
+        const today = new Date();
+        const dateStr = today.getFullYear() + "-" + (today.getMonth() + 1) + "-" + today.getDate();
+        let hash = 0; const finalStr = dateStr + SECRET_SALT;
+        for (let i = 0; i < finalStr.length; i++) { hash = (hash << 5) - hash + finalStr.charCodeAt(i); hash |= 0; }
+        return Math.abs(hash % 90000 + 10000);
+    }
+
+    // ============================================================
+    // ============ توابع احراز هویت با پشتیبانی از رمز عبور ============
+    // ============================================================
+    async function handleLogin() {
+        const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+        const pass = document.getElementById('loginPassword').value.trim();
+        
+        if (!email) {
+            alert('لطفاً ایمیل خود را وارد کنید.');
+            return;
+        }
+        
+        // ===== بررسی ادمین =====
+        if (email === 'admin@site.com') {
+            if (pass !== '123456') {
+                alert('❌ رمز عبور مدیر اشتباه است.');
+                return;
+            }
+            localStorage.setItem('admin_session', JSON.stringify({
+                email: email,
+                loginTime: Date.now()
+            }));
+            localStorage.removeItem('staff_session');
+            alert('✅ با موفقیت به عنوان مدیر وارد شدید.');
+            location.reload();
+            return;
+        }
+        
+        // ===== بررسی پرسنل از دیتابیس =====
+        try {
+            const { data: user, error } = await _supabase
+                .from(USERS_TABLE)
+                .select('*')
+                .eq('email', email)
+                .eq('is_active', true)
+                .maybeSingle();
+                
+            if (error) {
+                console.error('Database error:', error);
+                alert('❌ خطا در ارتباط با دیتابیس.');
+                return;
+            }
+            
+            if (!user) {
+                alert('❌ ایمیل شما در سیستم ثبت نشده است. با مدیر تماس بگیرید.');
+                return;
+            }
+            
+            // ===== بررسی رمز عبور =====
+            if (!pass) {
+                alert('❌ لطفاً رمز عبور خود را وارد کنید.');
+                return;
+            }
+            
+            // اگر رمز در دیتابیس ذخیره شده باشد
+            if (user.password) {
+                if (pass !== user.password) {
+                    alert('❌ رمز عبور اشتباه است.');
+                    return;
+                }
+            } else {
+                // برای کاربران قدیمی که رمز ندارند
+                if (pass !== '123456') {
+                    alert('❌ رمز عبور اشتباه است.');
+                    return;
+                }
+                // بروزرسانی رمز کاربر
+                const { error: updateError } = await _supabase
+                    .from(USERS_TABLE)
+                    .update({ password: pass })
+                    .eq('id', user.id);
+                    
+                if (updateError) {
+                    console.warn('Could not update password:', updateError);
+                }
+            }
+            
+            // ===== ذخیره جلسه کاربر =====
+            localStorage.setItem('staff_session', JSON.stringify({
+                email: email,
+                profile: { full_name: user.full_name, department: user.department },
+                loginTime: Date.now()
+            }));
+            localStorage.removeItem('admin_session');
+            
+            alert(`👤 خوش آمدید ${user.full_name}`);
+            location.reload();
+            
+        } catch (error) {
+            console.error('Login error:', error);
+            alert('❌ خطا در ورود: ' + error.message);
+        }
+    }
+
+    function handleLogout() {
+        localStorage.removeItem('admin_session');
+        localStorage.removeItem('staff_session');
+        location.reload();
+    }
+
+    async function checkUserSession() {
+        const adminSession = localStorage.getItem('admin_session');
+        const staffSession = localStorage.getItem('staff_session');
+        
+        const loginForm = document.getElementById('loginForm');
+        const logoutForm = document.getElementById('logoutForm');
+        const userBadge = document.getElementById('userBadge');
+        const adminControls = document.getElementById('adminControls');
+        const adminRequestsBox = document.getElementById('adminRequestsBox');
+        const staffInstructionBox = document.getElementById('staffInstructionBox');
+        const instructionText = document.getElementById('instructionText');
+
+        if (adminSession) {
+            const session = JSON.parse(adminSession);
+            currentUserEmail = session.email;
+            isAdmin = true;
+            isStaff = false;
+            currentUserProfile = { role: 'admin', full_name: 'مدیر سیستم', department: 'admin' };
+            
+            if(loginForm) loginForm.style.display = 'none';
+            if(logoutForm) logoutForm.style.display = 'flex';
+            if(userBadge) {
+                userBadge.innerText = `👑 مدیر: ${currentUserEmail}`;
+                userBadge.className = "text-amber-700 bg-amber-50 border border-amber-200 text-xs font-bold px-2.5 py-1 rounded-lg";
+            }
+            if(adminControls) adminControls.classList.remove('hidden');
+            if(adminRequestsBox) adminRequestsBox.classList.remove('hidden');
+            if(staffInstructionBox) staffInstructionBox.classList.add('hidden');
+            
+            const todayCodeEl = document.getElementById('todayCode');
+            if(todayCodeEl) todayCodeEl.innerText = generateDailyCode();
+            loadShiftChanges();
+        } else if (staffSession) {
+            const session = JSON.parse(staffSession);
+            currentUserProfile = session.profile;
+            currentUserEmail = session.email;
+            isAdmin = false;
+            isStaff = true;
+            currentUserDepartment = session.profile.department;
+            
+            if(loginForm) loginForm.style.display = 'none';
+            if(logoutForm) logoutForm.style.display = 'flex';
+            if(userBadge) {
+                userBadge.innerText = `👤 ${currentUserProfile.full_name} (${currentUserProfile.department === 'anesthesia' ? 'هوشبری' : 'اتاق عمل'})`;
+                userBadge.className = "text-indigo-700 bg-indigo-50 border border-indigo-200 text-xs font-bold px-2.5 py-1 rounded-lg";
+            }
+            if(adminControls) adminControls.classList.add('hidden');
+            if(adminRequestsBox) adminRequestsBox.classList.add('hidden');
+            if(staffInstructionBox) staffInstructionBox.classList.remove('hidden');
+            
+            if(instructionText) {
+                const deptText = currentUserDepartment === 'anesthesia' ? 'هوشبری' : 'اتاق عمل';
+                instructionText.innerHTML = `✨ شما به عنوان <strong>${currentUserProfile.full_name}</strong> (بخش ${deptText}) وارد شده‌اید. فقط می‌توانید برای روزهای آینده <strong>آف درخواستی</strong> خود را ثبت کنید.`;
+            }
+        } else {
+            isAdmin = false;
+            isStaff = false;
+            currentUserEmail = "";
+            currentUserProfile = null;
+            
+            if(loginForm) loginForm.style.display = 'flex';
+            if(logoutForm) logoutForm.style.display = 'none';
+            if(adminControls) adminControls.classList.add('hidden');
+            if(adminRequestsBox) adminRequestsBox.classList.add('hidden');
+            if(staffInstructionBox) staffInstructionBox.classList.remove('hidden');
+            if(instructionText) {
+                instructionText.innerHTML = 'برای ثبت درخواست <strong>«آف درخواستی»</strong> ابتدا وارد شوید.';
+            }
+        }
+    }
+
+    // ============================================================
+    // ============ توابع مدیریت کاربران با پشتیبانی از رمز عبور ============
+    // ============================================================
+    async function createUser(email, password, fullName, department) {
+        if (!isAdmin) {
+            alert('فقط مدیر می‌تواند کاربر ایجاد کند.');
+            return;
+        }
+        
+        if (!password || password.length < 4) {
+            alert('❌ رمز عبور باید حداقل ۴ کاراکتر باشد.');
+            return;
+        }
+        
+        try {
+            // بررسی وجود کاربر
+            const { data: existingUser } = await _supabase
+                .from(USERS_TABLE)
+                .select('email')
+                .eq('email', email)
+                .maybeSingle();
+                
+            if (existingUser) {
+                alert('❌ این ایمیل قبلاً ثبت شده است.');
+                return;
+            }
+            
+            const { error } = await _supabase
+                .from(USERS_TABLE)
+                .insert([{
+                    email: email,
+                    full_name: fullName,
+                    password: password, // ذخیره رمز به صورت ساده
+                    role: 'staff',
+                    department: department,
+                    is_active: true,
+                    created_at: new Date().toISOString()
+                }]);
+                
+            if (error) {
+                console.error('Insert error:', error);
+                alert('❌ خطا در ایجاد کاربر: ' + error.message);
+                return;
+            }
+            
+            alert(`✅ کاربر ${fullName} با موفقیت ایجاد شد.`);
+            loadUsersList();
+            
+            // بروزرسانی خودکار لیست کاربران در جدول اصلی
+            await syncAllUsersToTable();
+            
+        } catch (error) {
+            console.error('Create user error:', error);
+            alert('❌ خطا: ' + error.message);
+        }
+    }
+
+    async function loadUsersList() {
+        if (!isAdmin) return;
+        
+        const tbody = document.getElementById('usersList');
+        if (!tbody) return;
+        
+        try {
+            const { data, error } = await _supabase
+                .from(USERS_TABLE)
+                .select('*')
+                .order('full_name');
+                
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">هیچ کاربری ثبت نشده است.</td></tr>`;
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            data.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-right">${user.full_name}</td>
+                    <td class="p-3 text-slate-600 text-right">${user.email}</td>
+                    <td class="p-3 text-right">${user.department === 'anesthesia' ? 'هوشبری' : 'اتاق عمل'}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="resetUserPassword(${user.id})" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded text-[10px] font-bold ml-1">
+                            🔑 تغییر رمز
+                        </button>
+                        <button onclick="deleteUser(${user.id})" class="px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded text-[10px] font-bold">
+                            🗑️ حذف
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-rose-500">خطا در بارگذاری: ${error.message}</td></tr>`;
+        }
+    }
+
+    async function resetUserPassword(userId) {
+        if (!isAdmin) {
+            alert('فقط مدیر می‌تواند رمز عبور را تغییر دهد.');
+            return;
+        }
+        
+        const newPassword = prompt('رمز عبور جدید را وارد کنید (حداقل ۴ کاراکتر):');
+        if (!newPassword) return;
+        
+        if (newPassword.length < 4) {
+            alert('❌ رمز عبور باید حداقل ۴ کاراکتر باشد.');
+            return;
+        }
+        
+        try {
+            const { error } = await _supabase
+                .from(USERS_TABLE)
+                .update({ 
+                    password: newPassword,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', userId);
+                
+            if (error) throw error;
+            
+            alert('✅ رمز عبور با موفقیت تغییر یافت.');
+            loadUsersList();
+        } catch (error) {
+            alert('❌ خطا: ' + error.message);
+        }
+    }
+
+    async function deleteUser(userId) {
+        if (!confirm('آیا از حذف این کاربر مطمئن هستید؟')) return;
+        
+        try {
+            const { error } = await _supabase
+                .from(USERS_TABLE)
+                .delete()
+                .eq('id', userId);
+                
+            if (error) throw error;
+            
+            alert('✅ کاربر با موفقیت حذف شد.');
+            loadUsersList();
+        } catch (error) {
+            alert('❌ خطا در حذف کاربر: ' + error.message);
+        }
+    }
+
+    async function createUserFromForm() {
+        const email = document.getElementById('newUserEmail').value.trim();
+        const password = document.getElementById('newUserPassword').value.trim();
+        const fullName = document.getElementById('newUserName').value.trim();
+        const department = document.getElementById('newUserDepartment').value;
+        
+        if (!email || !fullName) {
+            alert('لطفاً ایمیل و نام کامل را وارد کنید.');
+            return;
+        }
+        
+        if (!password || password.length < 4) {
+            alert('❌ رمز عبور باید حداقل ۴ کاراکتر باشد.');
+            return;
+        }
+        
+        await createUser(email, password, fullName, department);
+        
+        document.getElementById('newUserEmail').value = '';
+        document.getElementById('newUserPassword').value = '';
+        document.getElementById('newUserName').value = '';
+    }
+
+    async function syncAllUsersToTable() {
+        if (!isAdmin) {
+            alert('فقط مدیر می‌تواند این کار را انجام دهد.');
+            return;
+        }
+        
+        try {
+            const { data: users, error } = await _supabase
+                .from(USERS_TABLE)
+                .select('*')
+                .eq('is_active', true)
+                .order('full_name');
+                
+            if (error) throw error;
+            
+            if (!users || users.length === 0) {
+                alert('هیچ کاربر فعالی یافت نشد.');
+                return;
+            }
+            
+            const currentType = document.getElementById('scheduleType').value;
+            const department = currentType === 'anesthesia' || currentType === 'crisis_anesthesia' ? 'anesthesia' : 'or';
+            
+            const filteredUsers = users.filter(u => u.department === department);
+            
+            if (filteredUsers.length === 0) {
+                alert(`هیچ کاربری در بخش ${department === 'anesthesia' ? 'هوشبری' : 'اتاق عمل'} یافت نشد.`);
+                return;
+            }
+            
+            const rows = document.querySelectorAll('#tbl tr');
+            for (let i = 0; i < filteredUsers.length && i < rows.length - 1; i++) {
+                const row = rows[i + 1];
+                const nameInput = row.querySelector('td.name-column input');
+                if (nameInput) {
+                    nameInput.value = filteredUsers[i].full_name;
+                    row.classList.remove('empty-name');
+                }
+            }
+            
+            await saveCurrentMonth();
+            alert(`✅ ${filteredUsers.length} کاربر با موفقیت به جدول اضافه شدند.`);
+            closeUserModal();
+            changeMonth();
+        } catch (error) {
+            alert('❌ خطا در همگام‌سازی: ' + error.message);
+        }
+    }
+
+    // ============================================================
+    // ============ بقیه توابع برنامه (بدون تغییر) ============
+    // ============================================================
+    // ... (بقیه کدهای برنامه مثل before)
+
+    // ============================================================
+    // ============ ادامه کدهای اصلی برنامه ============
+    // ============================================================
+    
+    function canEditCell(rowIndex, dayIndex) {
+        if (isAdmin) return true;
+        
+        if (!currentUserProfile) return false;
+        
+        const rowName = getRowName(rowIndex);
+        if (rowName !== currentUserProfile.full_name) return false;
+        
+        const year = parseInt(document.getElementById('year').value);
+        const month = parseInt(document.getElementById('month').value);
+        const day = dayIndex + 1;
+        
+        if (isPastDate(year, month, day)) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    function getRowName(rowIndex) {
+        const rows = document.querySelectorAll('#tbl tr');
+        if (rowIndex + 1 >= rows.length) return '';
+        const nameInput = rows[rowIndex + 1].querySelector('td.name-column input');
+        return nameInput ? nameInput.value.trim() : '';
+    }
+
+    function isFutureMonth() {
+        const selectedYear = parseInt(document.getElementById('year').value);
+        const selectedMonth = parseInt(document.getElementById('month').value);
+        const currentYear = 1405; const currentMonth = 4; 
+        if (selectedYear > currentYear) return true;
+        if (selectedYear === currentYear && selectedMonth > currentMonth) return true;
+        return false;
+    }
+
+    // ============================================================
+    // ============ توابع اصلی برنامه ============
+    // ============================================================
+    async function togglePublishStatus() {
+        if (!isAdmin) return;
+        const year = document.getElementById('year').value; const month = document.getElementById('month').value; const type = document.getElementById('scheduleType').value;
+        const key = getMonthKey(year, month, type);
+        if(!allData[key]) allData[key] = { employees: collectTableData(), holidays: manualHolidayDays };
+        allData[key].isPublished = !allData[key].isPublished; saveAllData(); updatePublishUI(allData[key].isPublished); await saveCurrentMonth();
+    }
+
+    function updatePublishUI(isPublished) {
+        const label = document.getElementById('publishStatusLabel'); const btn = document.getElementById('togglePublishBtn');
+        if (!label || !btn) return;
+        if (isPublished) {
+            label.innerText = "🌐 منتشر شده"; label.className = "bg-emerald-500 text-white px-2.5 py-1 rounded-lg font-bold"; btn.innerText = "🔒 خصوصی";
+        } else {
+            label.innerText = "🔒 پیش‌نویس"; label.className = "bg-rose-500 text-white px-2.5 py-1 rounded-lg font-bold"; btn.innerText = "👁️ انتشار";
+        }
+    }
+
+    async function loadShiftChanges() {
+        const tbody = document.getElementById('requestsList');
+        if(!tbody) return;
+        try {
+            const { data, error } = await _supabase.from('shift_changes').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 font-medium">هیچ درخواستی ثبت نشده است.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = '';
+            data.forEach(req => {
+                const date = new Date(req.created_at);
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.innerHTML = `<td class="p-3 font-bold text-slate-900">${req.applicant_name}</td><td class="p-3 text-slate-600">${req.details}</td><td class="p-3 text-center text-slate-400">${date.toLocaleDateString('fa-IR')}</td><td class="p-3 text-center"><button class="px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded-md font-bold text-[11px] transition-all" onclick="deleteRequest(${req.id})">حذف</button></td>`;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-rose-500 font-bold">خطا در بارگذاری.</td></tr>`;
+        }
+    }
+
+    async function deleteRequest(id) {
+        if (!confirm('آیا از حذف مطمئن هستید؟')) return;
+        const { error } = await _supabase.from('shift_changes').delete().eq('id', id);
+        if (!error) loadShiftChanges();
+    }
+
+    function loadAllData() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            allData = stored ? JSON.parse(stored) : {};
+        } catch (e) {
+            allData = {};
+        }
+    }
+
+    function saveAllData() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+        } catch (e) {}
+    }
+
+    // ============================================================
+    // ============ توابع ذخیره‌سازی با حفظ آف‌ها ============
+    // ============================================================
+    function collectTableData() {
+        const rows = document.querySelectorAll('#tbl tr');
+        const data = [];
+        rows.forEach((row, index) => {
+            if (index === 0) return;
+            const rowData = {};
+            const nameInput = row.querySelector('td.name-column input');
+            rowData.name = nameInput ? nameInput.value.trim() : '';
+            const empSelect = row.querySelector('td.type-column select');
+            rowData.employment = empSelect ? empSelect.value : '';
+            const roleSelect = row.querySelector('td.role-column select');
+            rowData.role = roleSelect ? roleSelect.value : '';
+            rowData.shifts = [];
+            const rowSelectors = allMultiSelects[index - 1];
+            if (rowSelectors) {
+                rowSelectors.forEach(ms => {
+                    if (ms) {
+                        rowData.shifts.push({
+                            codes: ms.getSelected(),
+                            requestedOff: ms.getRequestedOff(),
+                            note: ms.getNote()
+                        });
+                    } else {
+                        rowData.shifts.push({ codes: [], requestedOff: false, note: "" });
+                    }
+                });
+            }
+            data.push(rowData);
+        });
+        return data;
+    }
+
+    async function saveCurrentMonth() {
+        const year = document.getElementById('year').value;
+        const month = document.getElementById('month').value;
+        const type = document.getElementById('scheduleType').value;
+        
+        if (type === 'general_view') return;
+        
+        const key = getMonthKey(year, month, type);
+        
+        let existingData = null;
+        try {
+            const { data, error } = await _supabase
+                .from(TABLE_NAME)
+                .select('*')
+                .eq('month_key', key)
+                .maybeSingle();
+            if (!error && data) {
+                existingData = data;
+            }
+        } catch (e) {}
+        
+        const currentData = collectTableData();
+        
+        let finalData = currentData;
+        if (existingData && existingData.employees_data) {
+            const oldData = existingData.employees_data;
+            
+            finalData = currentData.map((row, index) => {
+                if (index < oldData.length && row.name === oldData[index].name) {
+                    const mergedShifts = row.shifts.map((shift, dayIndex) => {
+                        if (dayIndex < oldData[index].shifts.length) {
+                            const oldShift = oldData[index].shifts[dayIndex];
+                            if (shift.requestedOff === true) {
+                                return shift;
+                            }
+                            if (oldShift && oldShift.requestedOff === true && 
+                                (!shift.codes || shift.codes.length === 0)) {
+                                return {
+                                    codes: oldShift.codes || [],
+                                    requestedOff: true,
+                                    note: oldShift.note || ""
+                                };
+                            }
+                            if (oldShift && oldShift.requestedOff === true && shift.codes && shift.codes.length > 0) {
+                                return {
+                                    codes: shift.codes,
+                                    requestedOff: true,
+                                    note: oldShift.note || ""
+                                };
+                            }
+                        }
+                        return shift;
+                    });
+                    return { ...row, shifts: mergedShifts };
+                }
+                return row;
+            });
+        }
+        
+        const isPublished = allData[key] ? (allData[key].isPublished || false) : false;
+        allData[key] = { employees: finalData, holidays: manualHolidayDays, isPublished: isPublished };
+        saveAllData();
+        
+        updateSyncStatus('⏳ همگام‌سازی...');
+        
+        try {
+            const { data: existingRecord, error: checkError } = await _supabase
+                .from(TABLE_NAME)
+                .select('month_key')
+                .eq('month_key', key)
+                .maybeSingle();
+            
+            if (checkError && checkError.code !== 'PGRST116') {
+                throw checkError;
+            }
+            
+            let result;
+            if (existingRecord) {
+                result = await _supabase
+                    .from(TABLE_NAME)
+                    .update({
+                        employees_data: finalData,
+                        holidays_data: manualHolidayDays,
+                        "isPublished": isPublished,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('month_key', key);
+            } else {
+                result = await _supabase
+                    .from(TABLE_NAME)
+                    .insert([{
+                        month_key: key,
+                        employees_data: finalData,
+                        holidays_data: manualHolidayDays,
+                        "isPublished": isPublished,
+                        updated_at: new Date().toISOString()
+                    }]);
+            }
+            
+            if (result.error) throw result.error;
+            
+            updateSyncStatus('✅ ذخیره شد');
+        } catch (e) {
+            console.error('Supabase Error:', e);
+            updateSyncStatus('💾 خطا: ' + (e.message || 'نامشخص'), true);
+        }
+    }
+
+    async function fetchOnlineMonthData(year, month, type) {
+        const key = getMonthKey(year, month, type);
+        try {
+            const { data, error } = await _supabase
+                .from(TABLE_NAME)
+                .select('*')
+                .eq('month_key', key)
+                .maybeSingle();
+            
+            if (error) {
+                console.error('Fetch error:', error);
+                return allData[key] || null;
+            }
+            
+            if (data) {
+                return {
+                    employees: data.employees_data,
+                    holidays: data.holidays_data,
+                    isPublished: data.isPublished || false
+                };
+            }
+        } catch (e) {
+            console.error('Fetch error:', e);
+        }
+        return allData[key] || null;
+    }
+
+    function applyDataToTable(monthData, totalRows = employees) {
+        const rowsClear = document.querySelectorAll('#tbl tr');
+        rowsClear.forEach((row, index) => {
+            if (index === 0) return;
+            const nameInput = row.querySelector('td.name-column input');
+            if (nameInput) nameInput.value = '';
+            const empSelect = row.querySelector('td.type-column select');
+            if (empSelect) empSelect.selectedIndex = 0;
+            const roleSelect = row.querySelector('td.role-column select');
+            if (roleSelect) roleSelect.selectedIndex = 0;
+            row.classList.add('empty-name');
+            const daySelectors = allMultiSelects[index - 1];
+            if (daySelectors) {
+                daySelectors.forEach(ms => {
+                    if (ms) ms.clear();
+                });
+            }
+        });
+        
+        if (!monthData || !monthData.employees) {
+            rowsClear.forEach((row, index) => {
+                if (index > 0 && index < rowsClear.length) updateRow(index - 1);
+            });
+            return;
+        }
+        
+        const rows = document.querySelectorAll('#tbl tr');
+        const currentUserName = currentUserProfile ? currentUserProfile.full_name : '';
+        
+        monthData.employees.forEach((rowData, index) => {
+            const rowIndex = index + 1;
+            if (rowIndex < rows.length) {
+                const row = rows[rowIndex];
+                const nameInput = row.querySelector('td.name-column input');
+                if (nameInput) nameInput.value = rowData.name || '';
+                const empSelect = row.querySelector('td.type-column select');
+                if (empSelect) empSelect.value = rowData.employment || 'رسمی';
+                const roleSelect = row.querySelector('td.role-column select');
+                if (roleSelect) roleSelect.value = rowData.role || getDefaultRole();
+                
+                if (rowData.name && rowData.name.trim() !== '') {
+                    row.classList.remove('empty-name');
+                } else {
+                    row.classList.add('empty-name');
+                }
+                
+                if (rowData.shifts) {
+                    rowData.shifts.forEach((obj, dayIndex) => {
+                        const multiSelect = allMultiSelects[index]?.[dayIndex];
+                        if (multiSelect) {
+                            const isOwnRow = (rowData.name === currentUserName);
+                            
+                            let codes = [];
+                            let requestedOff = false;
+                            let note = "";
+                            
+                            if (Array.isArray(obj)) {
+                                codes = obj;
+                            } else if (obj && typeof obj === 'object') {
+                                codes = obj.codes || [];
+                                requestedOff = obj.requestedOff || false;
+                                note = obj.note || "";
+                            }
+                            
+                            if (!isAdmin && !isOwnRow) {
+                                const cleanCodes = codes.filter(code => code !== "آد");
+                                multiSelect.setSelected(cleanCodes, false, "");
+                            } else {
+                                multiSelect.setSelected(codes, requestedOff, note);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+        
+        for(let i = 0; i < totalRows; i++) {
+            updateRow(i);
+        }
+    }
+
+    function getMonthStartDay(year, month) {
+        const baseYear = 1405;
+        const baseWeekday = 0;
+        let totalDays = 0;
+        const y = parseInt(year);
+        const m = parseInt(month);
+        for (let yr = baseYear; yr < y; yr++) {
+            totalDays += (yr % 4 === 0) ? 366 : 365;
+        }
+        for (let mo = 1; mo < m; mo++) {
+            totalDays += daysInMonth(mo);
+        }
+        return (baseWeekday + totalDays) % 7;
+    }
+
+    function daysInMonth(m) {
+        if (m <= 6) return 31;
+        if (m <= 11) return 30;
+        return 29;
+    }
+
+    function hasConflict(selectedCodes, newCode) {
+        if (!newCode || newCode === "") return false;
+        if (blockingShifts.includes(newCode)) {
+            for (let code of selectedCodes) {
+                if (code !== "" && code !== newCode) return true;
+            }
+            return false;
+        }
+        for (let code of selectedCodes) {
+            if (blockingShifts.includes(code)) return true;
+        }
+        const conflicts = manualConflicts[newCode] || [];
+        for (let code of selectedCodes) {
+            if (conflicts.includes(code)) return true;
+            const codeConflicts = manualConflicts[code] || [];
+            if (codeConflicts.includes(newCode)) return true;
+        }
+        return false;
+    }
+
+    function getDefaultRole() {
+        const type = document.getElementById('scheduleType').value;
+        if (type.includes('anesthesia')) return "کارشناس هوشبری";
+        if (type.includes('or')) return "کارشناس اتاق عمل";
+        return "کارشناس اتاق عمل";
+    }
+
+    function onNameInputChanged(input) {
+        if(!isAdmin) return;
+        const row = input.closest('tr');
+        const val = input.value.trim();
+        if (val !== '') {
+            row.classList.remove('empty-name');
+            const roleSel = row.querySelector('td.role-column select');
+            if (roleSel && roleSel.value === "کارشناس اتاق عمل" && getDefaultRole() === "کارشناس هوشبری") {
+                roleSel.value = "کارشناس هوشبری";
+            } else if (roleSel && roleSel.value === "کارشناس هوشبری" && getDefaultRole() === "کارشناس اتاق عمل") {
+                roleSel.value = "کارشناس اتاق عمل";
+            }
+        } else {
+            row.classList.add('empty-name');
+        }
+        saveCurrentMonth();
+    }
+
+    function buildTable(customRowsCount = employees) {
+        const year = document.getElementById('year').value;
+        const month = document.getElementById('month').value;
+        const tbl = document.getElementById('tbl');
+        const loading = document.getElementById('loading');
+        
+        loading.style.display = 'flex';
+        tbl.style.display = 'none';
+        tbl.innerHTML = "";
+        allMultiSelects = [];
+        
+        const header = document.createElement("tr");
+        let thName = document.createElement("th");
+        thName.textContent = "نام پرسنل";
+        thName.className = "name-column";
+        header.appendChild(thName);
+        
+        let thType = document.createElement("th");
+        thType.textContent = "نوع استخدام";
+        thType.className = "type-column";
+        header.appendChild(thType);
+        
+        let thRole = document.createElement("th");
+        thRole.textContent = "سمت";
+        thRole.className = "role-column";
+        header.appendChild(thRole);
+        
+        const start = getMonthStartDay(year, month);
+        const totalDays = daysInMonth(+month);
+        
+        for (let d = 1; d <= totalDays; d++) {
+            let dayIndex = (start + d - 1) % 7;
+            let dayName = weekDays[dayIndex];
+            let th = document.createElement("th");
+            th.className = "day-column";
+            th.innerHTML = `<div class="day-number">${d}</div><div class="day-name">${dayName}</div>`;
+            if (dayName === "ج" || manualHolidayDays.includes(d)) th.classList.add("holiday");
+            header.appendChild(th);
+        }
+        
+        let th1 = document.createElement("th");
+        th1.textContent = "تعداد شیفت";
+        th1.className = "stat-column";
+        header.appendChild(th1);
+        
+        let th3 = document.createElement("th");
+        th3.textContent = "ساعت مجموع";
+        th3.className = "stat-column";
+        header.appendChild(th3);
+        
+        tbl.appendChild(header);
+        const defaultRole = getDefaultRole();
+        
+        for (let r = 0; r < customRowsCount; r++) {
+            let tr = document.createElement("tr");
+            tr.className = "empty-name hover:bg-indigo-50/20";
+            
+            let td = document.createElement("td");
+            td.className = "name-column";
+            let inputName = document.createElement("input");
+            inputName.placeholder = "نام پرسنل";
+            inputName.disabled = !isAdmin;
+            inputName.oninput = () => onNameInputChanged(inputName);
+            td.appendChild(inputName);
+            tr.appendChild(td);
+            
+            td = document.createElement("td");
+            td.className = "type-column";
+            let emp = document.createElement("select");
+            employment.forEach(v => emp.add(new Option(v, v)));
+            emp.disabled = !isAdmin;
+            emp.onchange = () => saveCurrentMonth();
+            td.appendChild(emp);
+            tr.appendChild(td);
+            
+            td = document.createElement("td");
+            td.className = "role-column";
+            let roleSel = document.createElement("select");
+            roles.forEach(v => roleSel.add(new Option(v, v)));
+            roleSel.value = defaultRole;
+            roleSel.disabled = !isAdmin;
+            roleSel.onchange = () => saveCurrentMonth();
+            td.appendChild(roleSel);
+            tr.appendChild(td);
+            
+            let daySelectors = [];
+            const currentRowIndex = r;
+            
+            for (let d = 1; d <= totalDays; d++) {
+                let dayIndex = (start + d - 1) % 7;
+                let dayName = weekDays[dayIndex];
+                td = document.createElement("td");
+                td.className = "day-column";
+                if (dayName === "ج" || manualHolidayDays.includes(d)) td.classList.add("holiday");
+                
+                let wrapper = document.createElement('div');
+                wrapper.className = 'multi-select-wrapper';
+                const multi = createMultiSelect(wrapper, () => {
+                    updateRow(currentRowIndex);
+                    saveCurrentMonth();
+                }, dayName, d, currentRowIndex, d - 1);
+                daySelectors.push(multi);
+                td.appendChild(wrapper);
+                tr.appendChild(td);
+            }
+            
+            allMultiSelects.push(daySelectors);
+            
+            let shiftInput = document.createElement("input");
+            shiftInput.readOnly = true;
+            shiftInput.style.fontWeight = "bold";
+            td = document.createElement("td");
+            td.className = "stat-column";
+            td.appendChild(shiftInput);
+            tr.appendChild(td);
+            
+            let hourInput = document.createElement("input");
+            hourInput.readOnly = true;
+            hourInput.style.fontWeight = "bold";
+            td = document.createElement("td");
+            td.className = "stat-column";
+            td.appendChild(hourInput);
+            tr.appendChild(td);
+            
+            tbl.appendChild(tr);
+        }
+        
+        loading.style.display = 'none';
+        tbl.style.display = '';
+    }
+
+    function createMultiSelect(container, callback, dayName, dayNumber, rowIndex, dayIndex) {
+        let selectedCodes = [];
+        let isRequestedOff = false;
+        let staffNote = "";
+        const display = document.createElement('div');
+        display.className = 'selected-display';
+        display.textContent = '---';
+        const dropdown = document.createElement('div');
+        dropdown.className = 'dropdown-list';
+        const conflictMsg = document.createElement('div');
+        conflictMsg.className = 'conflict-message';
+        conflictMsg.textContent = '⚠️ تداخل';
+        const tooltip = document.createElement('div');
+        tooltip.className = 'note-tooltip';
+        container.appendChild(tooltip);
+
+        function rebuildDropdownUI() {
+            dropdown.innerHTML = '';
+            
+            const canEdit = canEditCell(rowIndex, dayIndex);
+            const isPast = isPastDate(
+                parseInt(document.getElementById('year').value),
+                parseInt(document.getElementById('month').value),
+                dayNumber
+            );
+            const isOwnRow = (getRowName(rowIndex) === currentUserProfile?.full_name);
+            
+            if (isAdmin) {
+                if (isRequestedOff) {
+                    const infoBox = document.createElement('div');
+                    infoBox.className = "text-[10px] bg-amber-50 text-amber-800 p-2 rounded-md my-1 font-medium border border-amber-200 text-right";
+                    infoBox.innerHTML = `📝 <strong>علت درخواست آف:</strong><br>${staffNote || 'بدون توضیح'}`;
+                    dropdown.appendChild(infoBox);
+                }
+
+                shiftOptions.forEach(opt => {
+                    const label = document.createElement('label');
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = opt.code;
+                    const span = document.createElement('span');
+                    if (opt.isCircle) {
+                        const circleSpan = document.createElement('span');
+                        circleSpan.className = 'circle-s';
+                        circleSpan.textContent = 'ص';
+                        span.appendChild(circleSpan);
+                    } else {
+                        span.textContent = opt.display;
+                    }
+                    cb.checked = selectedCodes.includes(opt.code);
+                    cb.onchange = function(e) {
+                        e.stopPropagation();
+                        const newCode = this.value;
+                        const isChecked = this.checked;
+                        if (isChecked) {
+                            if (hasConflict(selectedCodes, newCode)) {
+                                conflictMsg.style.display = 'block';
+                                this.checked = false;
+                                setTimeout(() => {
+                                    conflictMsg.style.display = 'none';
+                                }, 1500);
+                                return;
+                            }
+                            conflictMsg.style.display = 'none';
+                            if (!selectedCodes.includes(newCode)) {
+                                if (blockingShifts.includes(newCode)) {
+                                    selectedCodes = [];
+                                    const otherCheckboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+                                    otherCheckboxes.forEach(otherCb => {
+                                        if (otherCb.value !== newCode) otherCb.checked = false;
+                                    });
+                                }
+                                selectedCodes.push(newCode);
+                            }
+                        } else {
+                            const index = selectedCodes.indexOf(newCode);
+                            if (index > -1) selectedCodes.splice(index, 1);
+                        }
+                        isRequestedOff = false;
+                        updateDisplay();
+                        if (callback) callback();
+                    };
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    dropdown.appendChild(label);
+                });
+                
+                const btnSubmit = document.createElement('button');
+                btnSubmit.textContent = "تایید";
+                btnSubmit.className = "w-full mt-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold text-[10px] transition-all text-center block";
+                btnSubmit.onclick = function(e) {
+                    e.stopPropagation();
+                    dropdown.classList.remove('show');
+                };
+                dropdown.appendChild(btnSubmit);
+                
+            } else if (isStaff) {
+                if (!isOwnRow) {
+                    const msg = document.createElement('div');
+                    msg.className = "text-[10px] text-slate-400 p-2 text-center";
+                    msg.innerText = "⛔ شما فقط می‌توانید آف خود را ثبت کنید";
+                    dropdown.appendChild(msg);
+                    
+                    if (selectedCodes.length > 0) {
+                        const shiftDisplay = document.createElement('div');
+                        shiftDisplay.className = "text-[11px] text-slate-600 p-2 text-center border-t border-slate-100 mt-1";
+                        const displayCodes = selectedCodes.filter(code => code !== "آد");
+                        shiftDisplay.innerText = `شیفت: ${displayCodes.join(' - ')}`;
+                        dropdown.appendChild(shiftDisplay);
+                    }
+                } else if (canEdit && !isPast) {
+                    const title = document.createElement('div');
+                    title.className = "text-[11px] font-bold text-slate-700 mb-2 text-right";
+                    title.innerText = "ثبت آف درخواستی";
+                    dropdown.appendChild(title);
+                    
+                    const txtArea = document.createElement('textarea');
+                    txtArea.className = "w-full border border-slate-200 text-[11px] p-1.5 rounded-lg text-right outline-none focus:border-indigo-500 mb-2 resize-none h-14";
+                    txtArea.placeholder = "توضیحات (علت درخواست)...";
+                    txtArea.value = staffNote;
+                    dropdown.appendChild(txtArea);
+                    
+                    const btnReqOff = document.createElement('button');
+                    btnReqOff.textContent = isRequestedOff ? "❌ لغو" : "✨ ثبت";
+                    btnReqOff.className = `w-full py-1 ${isRequestedOff ? 'bg-rose-500 hover:bg-rose-600' : 'bg-amber-500 hover:bg-amber-600'} text-white rounded-lg font-bold text-[10px] text-center block mb-1`;
+                    btnReqOff.onclick = function(e) {
+                        e.stopPropagation();
+                        
+                        if (!canEditCell(rowIndex, dayIndex)) {
+                            alert('❌ شما دسترسی به ثبت آف در این روز ندارید.');
+                            return;
+                        }
+                        
+                        if (isPast) {
+                            alert('❌ نمی‌توانید برای روزهای گذشته آف ثبت کنید.');
+                            return;
+                        }
+                        
+                        isRequestedOff = !isRequestedOff;
+                        staffNote = isRequestedOff ? txtArea.value.trim() : "";
+                        if(isRequestedOff) selectedCodes = [];
+                        updateDisplay();
+                        dropdown.classList.remove('show');
+                        if (callback) callback();
+                    };
+                    dropdown.appendChild(btnReqOff);
+                } else {
+                    let msg = document.createElement('div');
+                    msg.className = "text-[10px] text-slate-400 p-2 text-center";
+                    if (isPast) {
+                        msg.innerText = "⛔ برای روزهای گذشته قابل ثبت نیست";
+                    } else {
+                        msg.innerText = "⛔ دسترسی ندارید";
+                    }
+                    dropdown.appendChild(msg);
+                }
+            } else {
+                let msg = document.createElement('div');
+                msg.className = "text-[10px] text-slate-400 p-2 text-center";
+                msg.innerText = "⛔ لطفاً وارد شوید";
+                dropdown.appendChild(msg);
+            }
+        }
+
+        display.onclick = function(e) {
+            e.stopPropagation();
+            if(document.getElementById('scheduleType').value === 'general_view') return;
+            
+            if (!isAdmin && !isStaff) {
+                alert('⚠️ برای ثبت آف درخواستی، ابتدا وارد شوید.');
+                return;
+            }
+            
+            if (isStaff && !isAdmin) {
+                const isPast = isPastDate(
+                    parseInt(document.getElementById('year').value),
+                    parseInt(document.getElementById('month').value),
+                    dayNumber
+                );
+                if (isPast) {
+                    alert('❌ نمی‌توانید برای روزهای گذشته آف ثبت کنید.');
+                    return;
+                }
+            }
+            
+            const allDropdowns = document.querySelectorAll('.dropdown-list');
+            allDropdowns.forEach(dd => {
+                if (dd !== dropdown) dd.classList.remove('show');
+            });
+            
+            rebuildDropdownUI();
+            dropdown.classList.toggle('show');
+            conflictMsg.style.display = 'none';
+        };
+        
+        document.addEventListener('click', function(e) {
+            if (!container.contains(e.target) && dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+            }
+        });
+        
+        function updateDisplay() {
+            display.innerHTML = '';
+            tooltip.style.display = 'none';
+            
+            const isOwnRow = (getRowName(rowIndex) === currentUserProfile?.full_name);
+            
+            if (isStaff && !isAdmin && !isOwnRow) {
+                if (selectedCodes.length === 0) {
+                    display.textContent = '---';
+                } else {
+                    const displayCodes = selectedCodes.filter(code => code !== "آد");
+                    if (displayCodes.length === 0) {
+                        display.textContent = '---';
+                    } else {
+                        displayCodes.sort().forEach(code => {
+                            const tag = document.createElement('span');
+                            tag.className = 'selected-tag';
+                            const opt = shiftOptions.find(o => o.code === code);
+                            if (opt) {
+                                if (opt.isCircle) tag.innerHTML = '⭕ص';
+                                else tag.textContent = opt.display;
+                            } else {
+                                tag.textContent = code;
+                            }
+                            display.appendChild(tag);
+                        });
+                    }
+                }
+                return;
+            }
+            
+            if (isStaff && !isAdmin) {
+                const isPast = isPastDate(
+                    parseInt(document.getElementById('year').value),
+                    parseInt(document.getElementById('month').value),
+                    dayNumber
+                );
+                if (isPast && !isRequestedOff) {
+                    const tag = document.createElement('span');
+                    tag.className = 'selected-tag';
+                    tag.textContent = '⛔';
+                    display.appendChild(tag);
+                    return;
+                }
+            }
+            
+            if (isRequestedOff) {
+                const tag = document.createElement('span');
+                tag.className = 'requested-off-tag';
+                tag.innerHTML = 'آد 📝';
+                display.appendChild(tag);
+                if (staffNote) {
+                    tooltip.innerText = `آف درخواستی: ${staffNote}`;
+                }
+            } else if (selectedCodes.length === 0) {
+                display.textContent = '---';
+            } else {
+                if (isFutureMonth() && !isAdmin) {
+                    display.textContent = '---';
+                } else {
+                    selectedCodes.sort().forEach(code => {
+                        const tag = document.createElement('span');
+                        tag.className = 'selected-tag';
+                        const opt = shiftOptions.find(o => o.code === code);
+                        if (opt) {
+                            if (opt.isCircle) tag.innerHTML = '⭕ص';
+                            else tag.textContent = opt.display;
+                        } else {
+                            tag.textContent = code;
+                        }
+                        display.appendChild(tag);
+                    });
+                }
+            }
+        }
+        
+        container.appendChild(display);
+        container.appendChild(dropdown);
+        container.appendChild(conflictMsg);
+        
+        return {
+            getSelected: function() { return [...selectedCodes]; },
+            getRequestedOff: function() { return isRequestedOff; },
+            getNote: function() { return staffNote; },
+            setSelected: function(codes, reqOff, note) {
+                selectedCodes = codes || [];
+                isRequestedOff = reqOff || false;
+                staffNote = note || "";
+                updateDisplay();
+            },
+            refreshDisplay: function() { updateDisplay(); },
+            clear: function() {
+                selectedCodes = [];
+                isRequestedOff = false;
+                staffNote = "";
+                updateDisplay();
+            }
+        };
+    }
+
+    function updateRow(rowIndex) {
+        const rows = document.querySelectorAll('#tbl tr');
+        if (rowIndex + 1 >= rows.length) return;
+        const row = rows[rowIndex + 1];
+        const inputs = row.querySelectorAll('input[readonly]');
+        if (inputs.length < 2) return;
+        const shiftInput = inputs[0];
+        const hourInput = inputs[1];
+        const rowSelectors = allMultiSelects[rowIndex];
+        if (!rowSelectors) return;
+        
+        let totalShifts = 0, totalHours = 0;
+        const start = getMonthStartDay(document.getElementById('year').value, document.getElementById('month').value);
+        
+        rowSelectors.forEach((ms, dayZeroIndex) => {
+            const dayNumber = dayZeroIndex + 1;
+            const dayIndex = (start + dayNumber - 1) % 7;
+            const dayName = weekDays[dayIndex];
+            const codes = ms ? ms.getSelected() : [];
+            if (codes.length === 0) return;
+            
+            const isHolidayDay = (dayName === "ج" || manualHolidayDays.includes(dayNumber));
+            const base = isHolidayDay ? holidayBaseHours : baseHours;
+            let dayHours = 0, shiftCount = 0;
+            
+            codes.forEach(code => {
+                dayHours += base[code] || 0;
+                if (!["S", "م", "آ"].includes(code)) {
+                    if (code === "ش") {
+                        shiftCount += 2;
+                    } else if (code === "ع ش") {
+                        shiftCount += 3;
+                    } else {
+                        shiftCount += 1;
+                    }
+                }
+            });
+            
+            if (codes.length >= 2) {
+                let subtract = 0;
+                if ((codes.includes('ص') || codes.includes('ص e')) && (codes.includes('ع') || codes.includes('ع ش'))) subtract += 1;
+                if ((codes.includes('ع') || codes.includes('ع ش')) && codes.includes('ش')) subtract += 1;
+                if (codes.includes('ص') && codes.includes('ع') && codes.includes('ش')) subtract = 2;
+                if (codes.includes('ص ع') && codes.includes('ش')) subtract = 1;
+                if (codes.includes('ع ش') && codes.includes('ص')) subtract = 1;
+                dayHours -= subtract;
+            }
+            
+            totalHours += dayHours;
+            totalShifts += shiftCount;
+        });
+        
+        if (isFutureMonth() && !isAdmin) {
+            shiftInput.value = "---";
+            hourInput.value = "---";
+        } else {
+            shiftInput.value = totalShifts;
+            hourInput.value = totalHours;
+        }
+    }
+
+    async function changeMonth() {
+        const year = document.getElementById('year').value;
+        const month = document.getElementById('month').value;
+        const type = document.getElementById('scheduleType').value;
+        
+        const typeTexts = {
+            anesthesia: "هوشبری",
+            or: "اتاق عمل",
+            crisis_anesthesia: "بحران هوشبری",
+            crisis_or: "بحران اتاق عمل",
+            general_view: "کلی"
+        };
+        document.getElementById('mainTitle').innerText = `برنامه کاری پرسنل ${typeTexts[type]}`;
+        const controlBox = document.getElementById('publishControlBox');
+        const crisisGroup = document.getElementById('crisisActionGroup');
+
+        await checkUserSession();
+        let monthData = await fetchOnlineMonthData(year, month, type);
+        const isPublished = monthData ? (monthData.isPublished || false) : false;
+
+        if (isFutureMonth()) {
+            if (isAdmin) {
+                if (controlBox) controlBox.classList.remove('hidden');
+                updatePublishUI(isPublished);
+            } else {
+                if (controlBox) controlBox.classList.add('hidden');
+            }
+        } else {
+            if (controlBox) controlBox.classList.add('hidden');
+        }
+
+        if (crisisGroup) {
+            if (type.includes('crisis') && isAdmin) {
+                crisisGroup.classList.remove('hidden');
+            } else {
+                crisisGroup.classList.add('hidden');
+            }
+        }
+
+        if (type === 'general_view') {
+            updateSyncStatus('⏳ در حال ترکیب برنامه‌ها...');
+            const dataAnesthesia = await fetchOnlineMonthData(year, month, 'anesthesia');
+            const dataOr = await fetchOnlineMonthData(year, month, 'or');
+            manualHolidayDays = dataAnesthesia ? (dataAnesthesia.holidays || []) : [];
+            const combinedEmployees = [];
+            if(dataAnesthesia && dataAnesthesia.employees) combinedEmployees.push(...dataAnesthesia.employees);
+            if(dataOr && dataOr.employees) combinedEmployees.push(...dataOr.employees);
+            buildTable(combinedEmployees.length || employees);
+            applyDataToTable({ employees: combinedEmployees, holidays: manualHolidayDays }, combinedEmployees.length || employees);
+            updateSyncStatus('📊 نمایش کلی آماده است');
+        } else if (type.includes('crisis')) {
+            updateSyncStatus('⏳ در حال همگام‌سازی...');
+            const mainType = type === 'crisis_anesthesia' ? 'anesthesia' : 'or';
+            const mainMonthData = await fetchOnlineMonthData(year, month, mainType);
+            
+            if (!monthData || !monthData.employees || monthData.employees.length === 0) {
+                if (mainMonthData && mainMonthData.employees) {
+                    const clonedEmployees = mainMonthData.employees.map(e => ({
+                        name: e.name,
+                        employment: e.employment || 'رسمی',
+                        role: e.role || (mainType === 'anesthesia' ? 'کارشناس هوشبری' : 'کارشناس اتاق عمل'),
+                        shifts: Array(daysInMonth(+month)).fill({ codes: [], requestedOff: false, note: "" })
+                    }));
+                    monthData = { employees: clonedEmployees, holidays: mainMonthData.holidays || [], isPublished: false };
+                }
+            } else if (mainMonthData && mainMonthData.employees) {
+                mainMonthData.employees.forEach((mainEmp, idx) => {
+                    if (monthData.employees[idx] && mainEmp.name) {
+                        monthData.employees[idx].name = mainEmp.name;
+                        monthData.employees[idx].employment = mainEmp.employment;
+                        monthData.employees[idx].role = mainEmp.role;
+                    } else if (!monthData.employees[idx] && mainEmp.name) {
+                        monthData.employees.push({
+                            name: mainEmp.name,
+                            employment: mainEmp.employment || 'رسمی',
+                            role: mainEmp.role,
+                            shifts: Array(daysInMonth(+month)).fill({ codes: [], requestedOff: false, note: "" })
+                        });
+                    }
+                });
+            }
+
+            manualHolidayDays = monthData ? (monthData.holidays || []) : [];
+            if(document.getElementById('manualHolidays')) document.getElementById('manualHolidays').value = manualHolidayDays.join(',');
+            buildTable(employees);
+            applyDataToTable(monthData, employees);
+            updateSyncStatus('📊 لیست پرسنل بحران بارگذاری شد');
+        } else {
+            manualHolidayDays = monthData ? (monthData.holidays || []) : [];
+            if(document.getElementById('manualHolidays')) document.getElementById('manualHolidays').value = manualHolidayDays.join(',');
+            buildTable(employees);
+            applyDataToTable(monthData, employees);
+            updateSyncStatus('📊 اطلاعات بارگذاری شد');
+        }
+    }
+
+    function getAllowedCrisisShifts(mainShiftCodes) {
+        if (mainShiftCodes.includes("S") || mainShiftCodes.includes("م") || mainShiftCodes.includes("آ")) {
+            return [];
+        }
+        
+        let hasMorning = false;
+        let hasEvening = false;
+        let hasNight = false;
+        
+        for (let code of mainShiftCodes) {
+            if (code === "ص" || code === "D" || code === "⭕ص") hasMorning = true;
+            if (code === "ع" || code === "E") hasEvening = true;
+            if (code === "ش" || code === "N") hasNight = true;
+        }
+        
+        let allowed = [];
+        
+        if (hasMorning && !hasEvening && !hasNight) {
+            allowed.push("ع");
+            allowed.push("ش");
+        }
+        else if (!hasMorning && hasEvening && !hasNight) {
+            allowed.push("ص");
+            allowed.push("ش");
+        }
+        else if (!hasMorning && !hasEvening && hasNight) {
+            allowed.push("ص");
+            allowed.push("ع");
+            allowed.push("ص ع");
+        }
+        else if (hasMorning && hasEvening && !hasNight) {
+            allowed.push("ش");
+        }
+        else if (!hasMorning && hasEvening && hasNight) {
+            allowed.push("ص");
+        }
+        else if (hasMorning && !hasEvening && hasNight) {
+            allowed.push("ع");
+        }
+        else if (hasMorning && hasEvening && hasNight) {
+            return [];
+        }
+        else {
+            allowed.push("ص");
+            allowed.push("ع");
+            allowed.push("ص ع");
+            allowed.push("ش");
+        }
+        
+        return allowed;
+    }
+
+    async function autoFillCrisisSchedule() {
+        if (!isAdmin) {
+            alert('فقط مدیر به این گزینه دسترسی دارد.');
+            return;
+        }
+        
+        const year = document.getElementById('year').value;
+        const month = document.getElementById('month').value;
+        const type = document.getElementById('scheduleType').value;
+        const totalDays = daysInMonth(+month);
+        
+        if(!type.includes('crisis')) {
+            alert('لطفاً نوع برنامه را روی بحران قرار دهید.');
+            return;
+        }
+        
+        const mainType = type === 'crisis_anesthesia' ? 'anesthesia' : 'or';
+        updateSyncStatus('⏳ در حال فراخوانی برنامه اصلی...');
+        
+        const mainMonthData = await fetchOnlineMonthData(year, month, mainType);
+        if (!mainMonthData || !mainMonthData.employees) {
+            alert(`❌ برنامه اصلی یافت نشد.`);
+            return;
+        }
+
+        const rows = document.querySelectorAll('#tbl tr');
+        const validEmpIndexes = [];
+        const empNames = [];
+
+        for (let i = 1; i < rows.length; i++) {
+            const nameInput = rows[i].querySelector('td.name-column input');
+            if (nameInput && nameInput.value.trim() !== '') {
+                validEmpIndexes.push(i - 1);
+                empNames.push(nameInput.value.trim());
+            }
+        }
+        
+        if (validEmpIndexes.length < 2) {
+            alert('لطفاً حداقل نام ۲ نفر را در جدول وارد کنید.');
+            return;
+        }
+        
+        if(!confirm("آیا از چینش عادلانه برنامه بحران اطمینان دارید؟")) return;
+
+        const mainDataMap = {};
+        mainMonthData.employees.forEach(emp => {
+            if (emp.name && emp.name.trim() !== '') {
+                mainDataMap[emp.name.trim()] = emp;
+            }
+        });
+
+        validEmpIndexes.forEach(empIdx => {
+            for (let d = 1; d <= totalDays; d++) {
+                const ms = allMultiSelects[empIdx]?.[d - 1];
+                if (ms) {
+                    ms.clear();
+                }
+            }
+        });
+
+        let crisisCount = {};
+        validEmpIndexes.forEach(idx => crisisCount[idx] = 0);
+
+        for (let d = 1; d <= totalDays; d++) {
+            let nightCandidates = [];
+            
+            for (let i = 0; i < validEmpIndexes.length; i++) {
+                const empIdx = validEmpIndexes[i];
+                const empName = empNames[i];
+                
+                const mainEmpData = mainDataMap[empName];
+                let mainShiftCodes = [];
+                let isRequestedOff = false;
+                
+                if (mainEmpData && mainEmpData.shifts && mainEmpData.shifts[d - 1]) {
+                    const mainShift = mainEmpData.shifts[d - 1];
+                    if (mainShift.requestedOff === true) {
+                        isRequestedOff = true;
+                    }
+                    if (Array.isArray(mainShift)) {
+                        mainShiftCodes = mainShift;
+                    } else if (mainShift && mainShift.codes) {
+                        mainShiftCodes = mainShift.codes;
+                    }
+                }
+                
+                if (isRequestedOff) continue;
+                
+                const allowedShifts = getAllowedCrisisShifts(mainShiftCodes);
+                if (allowedShifts.includes("ش")) {
+                    nightCandidates.push(empIdx);
+                }
+            }
+            
+            if (nightCandidates.length === 0) {
+                for (let i = 0; i < validEmpIndexes.length; i++) {
+                    const empIdx = validEmpIndexes[i];
+                    const empName = empNames[i];
+                    const mainEmpData = mainDataMap[empName];
+                    let isRequestedOff = false;
+                    if (mainEmpData && mainEmpData.shifts && mainEmpData.shifts[d - 1]) {
+                        const mainShift = mainEmpData.shifts[d - 1];
+                        if (mainShift.requestedOff === true) {
+                            isRequestedOff = true;
+                        }
+                    }
+                    if (!isRequestedOff) {
+                        nightCandidates.push(empIdx);
+                    }
+                }
+            }
+            
+            if (nightCandidates.length > 0) {
+                nightCandidates.sort((a, b) => crisisCount[a] - crisisCount[b]);
+                const minCrisis = crisisCount[nightCandidates[0]];
+                const bestCandidates = nightCandidates.filter(idx => crisisCount[idx] === minCrisis);
+                const chosen = bestCandidates[Math.floor(Math.random() * bestCandidates.length)];
+                
+                if (allMultiSelects[chosen] && allMultiSelects[chosen][d - 1]) {
+                    allMultiSelects[chosen][d - 1].setSelected(["ش"], false, "");
+                    crisisCount[chosen]++;
+                }
+            }
+        }
+
+        for (let d = 1; d <= totalDays; d++) {
+            let hasMorningShift = false;
+            for (let i = 0; i < validEmpIndexes.length; i++) {
+                const empIdx = validEmpIndexes[i];
+                const currentShifts = allMultiSelects[empIdx]?.[d - 1]?.getSelected() || [];
+                if (currentShifts.includes("ص")) {
+                    hasMorningShift = true;
+                    break;
+                }
+            }
+            
+            if (hasMorningShift) continue;
+            
+            let morningCandidates = [];
+            
+            for (let i = 0; i < validEmpIndexes.length; i++) {
+                const empIdx = validEmpIndexes[i];
+                const empName = empNames[i];
+                const currentShifts = allMultiSelects[empIdx]?.[d - 1]?.getSelected() || [];
+                
+                if (currentShifts.length > 0) continue;
+                
+                const mainEmpData = mainDataMap[empName];
+                let mainShiftCodes = [];
+                let isRequestedOff = false;
+                
+                if (mainEmpData && mainEmpData.shifts && mainEmpData.shifts[d - 1]) {
+                    const mainShift = mainEmpData.shifts[d - 1];
+                    if (mainShift.requestedOff === true) {
+                        isRequestedOff = true;
+                    }
+                    if (Array.isArray(mainShift)) {
+                        mainShiftCodes = mainShift;
+                    } else if (mainShift && mainShift.codes) {
+                        mainShiftCodes = mainShift.codes;
+                    }
+                }
+                
+                if (isRequestedOff) continue;
+                
+                const allowedShifts = getAllowedCrisisShifts(mainShiftCodes);
+                if (allowedShifts.includes("ص") || allowedShifts.includes("ص ع")) {
+                    morningCandidates.push(empIdx);
+                }
+            }
+            
+            if (morningCandidates.length > 0) {
+                morningCandidates.sort((a, b) => crisisCount[a] - crisisCount[b]);
+                const minCrisis = crisisCount[morningCandidates[0]];
+                const bestCandidates = morningCandidates.filter(idx => crisisCount[idx] === minCrisis);
+                const chosen = bestCandidates[Math.floor(Math.random() * bestCandidates.length)];
+                
+                if (allMultiSelects[chosen] && allMultiSelects[chosen][d - 1]) {
+                    const currentShifts = allMultiSelects[chosen][d - 1].getSelected() || [];
+                    if (currentShifts.includes("ش")) {
+                        allMultiSelects[chosen][d - 1].setSelected(["ش", "ص"], false, "");
+                    } else {
+                        allMultiSelects[chosen][d - 1].setSelected(["ص"], false, "");
+                    }
+                    crisisCount[chosen]++;
+                }
+            }
+        }
+
+        for (let d = 1; d <= totalDays; d++) {
+            let hasEveningShift = false;
+            for (let i = 0; i < validEmpIndexes.length; i++) {
+                const empIdx = validEmpIndexes[i];
+                const currentShifts = allMultiSelects[empIdx]?.[d - 1]?.getSelected() || [];
+                if (currentShifts.includes("ع")) {
+                    hasEveningShift = true;
+                    break;
+                }
+            }
+            
+            if (hasEveningShift) continue;
+            
+            let eveningCandidates = [];
+            
+            for (let i = 0; i < validEmpIndexes.length; i++) {
+                const empIdx = validEmpIndexes[i];
+                const empName = empNames[i];
+                const currentShifts = allMultiSelects[empIdx]?.[d - 1]?.getSelected() || [];
+                
+                if (currentShifts.length >= 2) continue;
+                
+                const mainEmpData = mainDataMap[empName];
+                let mainShiftCodes = [];
+                let isRequestedOff = false;
+                
+                if (mainEmpData && mainEmpData.shifts && mainEmpData.shifts[d - 1]) {
+                    const mainShift = mainEmpData.shifts[d - 1];
+                    if (mainShift.requestedOff === true) {
+                        isRequestedOff = true;
+                    }
+                    if (Array.isArray(mainShift)) {
+                        mainShiftCodes = mainShift;
+                    } else if (mainShift && mainShift.codes) {
+                        mainShiftCodes = mainShift.codes;
+                    }
+                }
+                
+                if (isRequestedOff) continue;
+                
+                const allowedShifts = getAllowedCrisisShifts(mainShiftCodes);
+                if (allowedShifts.includes("ع") || allowedShifts.includes("ص ع")) {
+                    eveningCandidates.push(empIdx);
+                }
+            }
+            
+            if (eveningCandidates.length > 0) {
+                eveningCandidates.sort((a, b) => crisisCount[a] - crisisCount[b]);
+                const minCrisis = crisisCount[eveningCandidates[0]];
+                const bestCandidates = eveningCandidates.filter(idx => crisisCount[idx] === minCrisis);
+                const chosen = bestCandidates[Math.floor(Math.random() * bestCandidates.length)];
+                
+                if (allMultiSelects[chosen] && allMultiSelects[chosen][d - 1]) {
+                    const currentShifts = allMultiSelects[chosen][d - 1].getSelected() || [];
+                    
+                    if (currentShifts.includes("ش") && currentShifts.includes("ص")) {
+                        allMultiSelects[chosen][d - 1].setSelected(["ش", "ص", "ع"], false, "");
+                    } else if (currentShifts.includes("ش") && !currentShifts.includes("ص")) {
+                        allMultiSelects[chosen][d - 1].setSelected(["ش", "ع"], false, "");
+                    } else if (currentShifts.includes("ص") && !currentShifts.includes("ش")) {
+                        allMultiSelects[chosen][d - 1].setSelected(["ص", "ع"], false, "");
+                    } else {
+                        allMultiSelects[chosen][d - 1].setSelected(["ع"], false, "");
+                    }
+                    crisisCount[chosen]++;
+                }
+            }
+        }
+        
+        for (let i = 0; i < employees; i++) {
+            updateRow(i);
+        }
+        
+        await saveCurrentMonth();
+        alert('⚡ چینش خودکار بحران با موفقیت انجام شد!');
+    }
+
+    async function clearCrisisSchedule() {
+        if (!isAdmin) {
+            alert('فقط مدیر به این گزینه دسترسی دارد.');
+            return;
+        }
+        const type = document.getElementById('scheduleType').value;
+        if(!type.includes('crisis')) return;
+        if(!confirm("آیا از پاک کردن کامل جدول بحران مطمئن هستید؟")) return;
+        
+        allMultiSelects.forEach(row => {
+            row.forEach(ms => {
+                if (ms) ms.clear();
+            });
+        });
+        for (let i = 0; i < employees; i++) {
+            updateRow(i);
+        }
+        await saveCurrentMonth();
+        alert('🗑️ برنامه بحران پاک شد.');
+    }
+
+    async function applyManualHolidays() {
+        const input = document.getElementById('manualHolidays');
+        const value = input.value.trim();
+        if (value === '') return;
+        
+        const days = value.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d) && d > 0);
+        const currentTableData = collectTableData();
+        manualHolidayDays = days;
+        buildTable(employees);
+        applyDataToTable({ employees: currentTableData, holidays: manualHolidayDays }, employees);
+        await saveCurrentMonth();
+    }
+
+    async function clearManualHolidays() {
+        const currentTableData = collectTableData();
+        manualHolidayDays = [];
+        document.getElementById('manualHolidays').value = '';
+        buildTable(employees);
+        applyDataToTable({ employees: currentTableData, holidays: manualHolidayDays }, employees);
+        await saveCurrentMonth();
+    }
+
+    function exportData() {
+        const data = collectTableData();
+        const jsonData = {
+            year: document.getElementById('year').value,
+            month: document.getElementById('month').value,
+            type: document.getElementById('scheduleType').value,
+            manualHolidays: manualHolidayDays,
+            employees: data
+        };
+        const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const monthName = document.getElementById('month').options[document.getElementById('month').selectedIndex].text;
+        a.download = `برنامه_${document.getElementById('scheduleType').value}_${monthName}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.year) document.getElementById('year').value = data.year;
+                if (data.month) document.getElementById('month').value = data.month;
+                if (data.type) document.getElementById('scheduleType').value = data.type;
+                if (data.manualHolidays) {
+                    manualHolidayDays = data.manualHolidays;
+                    document.getElementById('manualHolidays').value = manualHolidayDays.join(',');
+                }
+                const monthData = {
+                    employees: data.employees || [],
+                    holidays: data.manualHolidays || [],
+                    isPublished: data.isPublished || false
+                };
+                const key = getMonthKey(data.year, data.month, data.type);
+                allData[key] = monthData;
+                saveAllData();
+                await saveCurrentMonth();
+                await changeMonth();
+                alert('داده‌ها با موفقیت وارد شدند!');
+            } catch (error) {
+                alert('خطا در فایل: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    window.onload = function() {
+        loadAllData();
+        changeMonth();
+    };
+
+    function prepareForPrint() {
+        const y = document.getElementById('year')?.value || '';
+        const m = document.getElementById('month')?.options[document.getElementById('month')?.selectedIndex]?.text || '';
+        const typeSelect = document.getElementById('scheduleType');
+        let titleText = "برنامه کاری پرسنل";
+        if(typeSelect) {
+            const type = typeSelect.value;
+            if(type === 'anesthesia') titleText = "برنامه هوشبری";
+            else if(type === 'or') titleText = "برنامه اتاق عمل";
+            else if(type === 'crisis_anesthesia') titleText = "برنامه بحران هوشبری";
+            else if(type === 'crisis_or') titleText = "برنامه بحران اتاق عمل";
+            else titleText = "نمایش کلی برنامه کاری";
+        }
+        const el = document.getElementById('printTitle');
+        if(el) el.innerText = `${titleText} - ${m} ${y}`;
+        
+        const rows = document.querySelectorAll('#tbl tr');
+        let lastFilledIndex = 0;
+        for(let i = 1; i < rows.length; i++) {
+            const nameInput = rows[i].querySelector('td.name-column input');
+            if(nameInput && nameInput.value.trim() !== '') {
+                lastFilledIndex = i;
+            }
+        }
+        const keepUntilIndex = lastFilledIndex + 1;
+        for(let i = 1; i < rows.length; i++) {
+            if(i > keepUntilIndex) {
+                rows[i].classList.add('hide-in-print');
+            } else {
+                rows[i].classList.remove('hide-in-print');
+            }
+        }
+    }
+    window.addEventListener('beforeprint', prepareForPrint);
+    </script>
+</body>
+</html>
